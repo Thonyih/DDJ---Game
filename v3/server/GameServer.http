@@ -1,0 +1,21 @@
+@host = http://localhost:5080
+
+### Register a player (username only) -> returns a JWT
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{ "username": "Knight_1" }
+
+### Admin login (password) -> returns a JWT
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "ChangeMe123!" }
+
+### Current user (paste a token from above)
+GET {{host}}/auth/me
+Authorization: Bearer <token>
+
+### List all users (admin token only)
+GET {{host}}/admin/users
+Authorization: Bearer <admin-token>

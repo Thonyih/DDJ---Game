@@ -10,6 +10,17 @@ dist-ssr/
 .vite/
 vite.config.*.timestamp-*
 
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
 # Logs
 logs/
 *.log
