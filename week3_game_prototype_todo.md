@@ -1,12 +1,14 @@
-# Week 3 — Toy Prototype To-Do
+\*\*\*\*# Week 3 — Toy Prototype To-Do
 
 ## Core Scene
+
 - [x] Fixed isometric camera
 - [x] Small 3D gameplay area
 - [x] Player character
 - [x] Basic ground and obstacles/props
 
 ## Mouse Movement
+
 - [x] Left-click ground to move
 - [x] Raycast mouse position to ground
 - [x] Player turns toward movement direction
@@ -14,12 +16,14 @@
 - [x] Destination/click indicator
 
 ## Player
+
 - [x] Health
 - [x] Attack damage
 - [x] Equipped weapon/item
-- [x] Death/failure state
+- [x] Death/failure **state**
 
 ## Enemy NPC
+
 - [x] One basic enemy type
 - [x] Enemy health
 - [x] Detect player within range
@@ -29,6 +33,7 @@
 - [x] Enemy defeat counts toward mission objective
 
 ## Combat
+
 - [x] Click enemy to target
 - [x] Approach target if outside attack range
 - [x] Attack when in range
@@ -38,6 +43,7 @@
 - [x] Basic hit/damage feedback
 
 ## Mission Menu
+
 - [x] Simple mission-selection panel
 - [x] Mission name
 - [x] Mission objective
@@ -45,6 +51,7 @@
 - [x] Start Mission button
 
 ## Mission Gameplay
+
 - [x] Start mission
 - [x] Track mission objective
 - [x] Display objective progress in HUD
@@ -52,17 +59,20 @@
 - [x] Display mission-complete state
 
 ## Rewards
+
 - [x] Grant resources/items after mission completion
 - [x] Add rewards to player data
 - [x] Display received rewards
 
 ## Inventory
+
 - [x] Simple inventory menu
 - [x] Display resources
 - [x] Display equipped item/weapon
 - [x] Display item/weapon level or relevant stat
 
 ## Upgrade
+
 - [x] Show current item/character level or stat
 - [x] Show upgrade cost
 - [x] Upgrade button
@@ -71,6 +81,7 @@
 - [x] Persist upgrade for the next mission
 
 ## Complete Prototype Loop
+
 - [x] Mission Selection
 - [x] Start Mission
 - [x] Move/Explore
@@ -83,6 +94,7 @@
 - [x] Replay mission with upgraded stats
 
 ## Final Testing
+
 - [ ] Complete full loop without developer intervention
 - [ ] Check mouse movement
 - [ ] Check NPC behaviour
