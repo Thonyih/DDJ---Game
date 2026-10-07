@@ -62,13 +62,13 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<PlayerRegistry>();
 
 // The game client runs on another origin (Vite dev server or GitHub Pages).
-// In development any localhost port is allowed, since Vite picks the next free port.
+// In development, games served from this machine or the local network are allowed on any port
+// (Vite picks the next free port, and LAN players open the game via this machine's IP).
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-var allowAnyLocalhost = builder.Environment.IsDevelopment();
+var allowLocalNetwork = builder.Environment.IsDevelopment();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .SetIsOriginAllowed(origin =>
-        allowedOrigins.Contains(origin)
-        || (allowAnyLocalhost && Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.IsLoopback))
+        allowedOrigins.Contains(origin) || (allowLocalNetwork && LocalNetwork.IsLocalOrigin(origin)))
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));

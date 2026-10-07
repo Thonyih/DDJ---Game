@@ -5,6 +5,8 @@ import type { Player } from './Player';
 import type { World } from './World';
 
 const HIT_FLASH_TIME = 0.15;
+// The player always reaches farther than the enemy it fights.
+const PLAYER_RANGE_ADVANTAGE = 1.0;
 const HEALTH_BAR_HEIGHT = 0.12;
 
 export interface EnemyType {
@@ -114,6 +116,10 @@ export class Enemy {
 
   get position(): THREE.Vector3 {
     return this.mesh.position;
+  }
+
+  get hitRange(): number {
+    return this.type.attackRange + PLAYER_RANGE_ADVANTAGE;
   }
 
   get isDead(): boolean {

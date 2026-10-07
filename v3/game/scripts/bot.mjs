@@ -8,6 +8,9 @@ const map = process.argv[3] ?? 'A';
 const RADIUS = 6;
 const SPEED = 0.5; // radians per second around the circle
 const SEND_INTERVAL_MS = 100;
+const MAX_HEALTH = 100;
+let health = MAX_HEALTH;
+let angle = 0; // position on the circle the bot walks
 
 const response = await fetch(`${SERVER_URL}/auth/register`, {
   method: 'POST',
@@ -29,11 +32,27 @@ connection.on('PlayersInMap', (players) => console.log(`On map ${map} with:`, pl
 connection.on('PlayerJoined', (p) => console.log(`${p.username} joined`));
 connection.on('PlayerLeft', () => console.log('A player left'));
 connection.on('PlayerMoved', () => {}); // the bot doesn't need other players' positions
+connection.on('PlayerStats', () => {});
+connection.on('PlayerAttacked', () => {});
+connection.on('PlayerKilled', (killer, victim) => console.log(`${killer} defeated ${victim}`));
+
+// The bot can be attacked: it loses health, and when it dies it reports the kill (no loot) and respawns.
+connection.on('TakeDamage', (damage, attackerId, attackerName) => {
+  health = Math.max(0, health - damage);
+  console.log(`Hit by ${attackerName} for ${damage} (HP ${health}/${MAX_HEALTH})`);
+  if (health > 0) {
+    connection.send('UpdateStats', health, MAX_HEALTH, 1);
+    return;
+  }
+  connection.send('ReportKilled', attackerId, 0, 0);
+  health = MAX_HEALTH;
+  angle += Math.PI; // respawn on the other side of the circle
+  connection.send('UpdateStats', health, MAX_HEALTH, 1);
+});
 
 await connection.start();
 
 // Walk in a circle around the map centre, facing the direction of travel.
-let angle = 0;
 const position = () => ({
   x: Math.cos(angle) * RADIUS,
   z: Math.sin(angle) * RADIUS,

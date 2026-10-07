@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Enemy } from './Enemy';
+import type { Attackable } from './Attackable';
 import { createNameLabel } from './Label';
 import { KNIGHT_COLOR } from './RemotePlayer';
 import { faceToward, flatDistance, moveToward } from './Movement';
@@ -8,8 +8,6 @@ import { Sword } from './Sword';
 import type { World } from './World';
 
 const MOVE_SPEED = 5;
-// The player always reaches slightly farther than the enemy it fights.
-const RANGE_ADVANTAGE = 1.0;
 const ATTACK_COOLDOWN = 0.8;
 const RADIUS = 0.5;
 const GROUND_Y = 1;
@@ -20,10 +18,10 @@ export class Player {
   readonly mesh: THREE.Mesh;
   health = 0;
   private knownMaxHealth = 0;
-  target: Enemy | null = null;
+  target: Attackable | null = null;
   private destination: THREE.Vector3 | null = null;
   private readonly sword = new Sword();
-  private swingTarget: Enemy | null = null;
+  private swingTarget: Attackable | null = null;
   private nameLabel: THREE.Mesh | null = null;
   private cooldown = 0;
   private flashTimer = 0;
@@ -101,17 +99,32 @@ export class Player {
     this.target = null;
   }
 
-  // Moving keeps the current target, so the player can walk into range and attack.
   moveTo(point: THREE.Vector3): void {
     this.destination = new THREE.Vector3(point.x, GROUND_Y, point.z);
   }
 
-  attack(enemy: Enemy): void {
-    this.target = enemy;
+  attack(target: Attackable): void {
+    this.target = target;
   }
 
-  isInAttackRange(enemy: Enemy): boolean {
-    return flatDistance(this.position, enemy.position) <= enemy.type.attackRange + RANGE_ADVANTAGE;
+  // Stops attacking; a swing already in progress won't deal damage.
+  stopAttacking(): void {
+    this.target = null;
+    this.swingTarget = null;
+  }
+
+  // Drops the target if it is this one (e.g. a knight that left the map).
+  forget(target: Attackable): void {
+    if (this.target === target) {
+      this.target = null;
+    }
+    if (this.swingTarget === target) {
+      this.swingTarget = null;
+    }
+  }
+
+  isInAttackRange(target: Attackable): boolean {
+    return flatDistance(this.position, target.position) <= target.hitRange;
   }
 
   takeDamage(amount: number): void {
@@ -156,7 +169,7 @@ export class Player {
     this.sword.setLevel(playerData.weaponLevel);
     this.updateAttack();
 
-    // Damage lands mid-swing, if the enemy is still alive and in range.
+    // Damage lands mid-swing, if the target is still alive and in range.
     const hit = this.sword.update(delta);
     const swingTarget = this.swingTarget;
     if (hit && swingTarget && !swingTarget.isDead && this.isInAttackRange(swingTarget)) {

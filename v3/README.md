@@ -40,7 +40,24 @@ npm run bot -- Sentinel A     # name and map are optional
 ```
 
 Positions are sent about 10× per second while moving. Players only see others on the same map.
-The server URL defaults to `http://localhost:5080` (override with `VITE_SERVER_URL` in `game/.env`).
+The game connects to the server on the same host it was opened from, port 5080 (override with `VITE_SERVER_URL` in `game/.env`).
+
+## LAN multiplayer (players on the same network)
+
+On the host computer:
+
+```bash
+cd server && dotnet run                        # server reachable from other computers
+cd game && npm run dev                         # prints the link to share with other players
+```
+
+Everyone (host included) opens the link printed under **"Multiplayer — players on this network open"**
+(`http://<host-ip>:5173`) and enters a name. The game automatically
+connects to the server on the same host (`<host-ip>:5080`).
+
+- macOS may ask to allow incoming connections for `dotnet` and `node`: click **Allow**.
+- Some networks (e.g. university Wi-Fi like eduroam, or guest networks) block devices from talking
+  to each other. If friends can't open the page, try a phone hotspot or a home router.
 
 ## Auth (JWT)
 
@@ -62,9 +79,22 @@ Each map (A–L) is a group; players only receive updates from their own map.
 |---|---|---|
 | client → server | `JoinMap(map, x, z, rotation)` | On connect and after travelling |
 | client → server | `UpdatePosition(x, z, rotation)` | About 10× per second while moving |
+| client → server | `UpdateStats(health, maxHealth, weaponLevel)` | When any of them changes |
+| client → server | `Attack(targetId, damage)` | Sword hit on another knight; server checks map, range, rate, alive |
+| client → server | `ReportKilled(killerId, gold, spices)` | Victim reports its death and the loot it dropped |
 | server → client | `PlayersInMap` | Everyone already on the map (sent to the joiner) |
-| server → client | `PlayerJoined` / `PlayerMoved` | A player's state |
+| server → client | `PlayerJoined` / `PlayerMoved` | A player's state (position, health, weapon level) |
 | server → client | `PlayerLeft` | The connection id that left |
+| server → client | `PlayerStats` | A player's health / max health / weapon level |
+| server → client | `PlayerAttacked(attackerId, targetId)` | Accepted hit: play swing and hit flash |
+| server → client | `TakeDamage(damage, attackerId, attackerName)` | Only to the target |
+| server → client | `PlayerKilled(killerName, victimName)` | Everyone on the map |
+| server → client | `Loot(gold, spices, victimName)` | Only to the killer |
+
+**PvP:** right-click another knight to target it; you auto-attack within 2.5 units using your sword
+damage. The defeated knight respawns at the map centre and drops 25% of its gold and spices to the
+killer. Damage and loot amounts come from the clients (the server caps damage at 100) until
+upgrades and resources are stored on the server. Bots can be attacked too.
 
 Client example:
 

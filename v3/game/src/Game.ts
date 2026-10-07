@@ -9,7 +9,7 @@ import { flatDistance } from './Movement';
 import { Network, type RemotePlayerState } from './Network';
 import { Player } from './Player';
 import { RemotePlayer } from './RemotePlayer';
-import { addReward } from './PlayerData';
+import { addReward, playerData } from './PlayerData';
 import { UI, type MapExit } from './UI';
 import { AREA_HALF_SIZE, World } from './World';
 
@@ -25,6 +25,8 @@ const TOO_FAR_MESSAGE_MS = 1200;
 const POTION_HEAL = 30;
 const BORDER_ZONE = 1.5;
 const ARRIVAL_INSET = 4;
+// Share of gold and spices a knight drops when another knight defeats it.
+const LOOT_SHARE = 0.25;
 
 const EFFECT_COLOR = {
   move: 0x00ff00,
@@ -72,6 +74,9 @@ export class Game {
   private borderDirection: Direction | null = null;
   private promptDismissed = false;
   private network: Network | null = null;
+  private username = '';
+  // Set when another knight's hit kills the player, so the death can be reported with loot.
+  private killedBy: { id: string; name: string } | null = null;
   private readonly remotePlayers = new Map<string, RemotePlayer>();
 
   constructor(canvas: HTMLCanvasElement, minimapCanvas: HTMLCanvasElement) {
@@ -133,11 +138,31 @@ export class Game {
       onPlayerJoined: (player) => this.upsertRemotePlayer(player),
       onPlayerMoved: (player) => this.upsertRemotePlayer(player),
       onPlayerLeft: (connectionId) => this.removeRemotePlayer(connectionId),
+      onPlayerStats: (connectionId, health, maxHealth, weaponLevel) =>
+        this.remotePlayers.get(connectionId)?.setStats(health, maxHealth, weaponLevel),
+      onPlayerAttacked: (attackerId, targetId) => {
+        this.remotePlayers.get(attackerId)?.playSwing();
+        this.remotePlayers.get(targetId)?.flash();
+      },
+      onTakeDamage: (damage, attackerId, attackerName) =>
+        this.takePlayerDamage(damage, attackerId, attackerName),
+      onPlayerKilled: (killerName, victimName) => {
+        // The killer and the victim get their own messages.
+        if (killerName !== this.username && victimName !== this.username) {
+          this.ui.showMessage(`${killerName} defeated ${victimName}`);
+        }
+      },
+      onLoot: (gold, spices, victimName) => {
+        addReward({ gold, spices });
+        this.ui.refreshInventory();
+        this.ui.showMessage(`You defeated ${victimName}! +${gold} gold, +${spices} spices`);
+      },
       onReconnected: () => void this.joinCurrentMap(),
     });
     await network.start();
     this.network = network;
     await this.joinCurrentMap();
+    this.username = username;
     this.player.setName(username);
     this.ui.showMessage(`Connected as ${username}`);
   }
@@ -149,6 +174,7 @@ export class Game {
     this.handleClick();
     this.player.update(delta, this.world);
     this.network?.update(delta, this.player.position.x, this.player.position.z, this.player.facing);
+    this.network?.updateStats(this.player.health, this.player.maxHealth, playerData.weaponLevel);
     for (const enemy of this.enemies) {
       enemy.update(delta, this.player, this.world);
     }
@@ -190,15 +216,22 @@ export class Game {
 
     this.raycaster.setFromCamera(click.position, this.camera);
 
+    let startedAttack = false;
     if (click.button === 'right') {
-      this.handleRightClick();
+      startedAttack = this.handleRightClick();
     } else {
       this.handleLeftClick();
     }
+
+    // Any click that doesn't pick an enemy or knight cancels the current attack.
+    if (!startedAttack) {
+      this.player.stopAttacking();
+    }
   }
 
-  // Right click: target an enemy or open a chest. Never moves the player.
-  private handleRightClick(): void {
+  // Right click: target an enemy or knight, or open a chest. Never moves the player.
+  // Returns true if it started an attack.
+  private handleRightClick(): boolean {
     const enemyHits = this.raycaster.intersectObjects(this.enemies.map((enemy) => enemy.mesh), false);
     const enemy = this.enemies.find((item) => item.mesh === enemyHits[0]?.object);
     if (enemy) {
@@ -207,7 +240,19 @@ export class Game {
       if (!this.player.isInAttackRange(enemy)) {
         this.ui.showMessage('Too far away', TOO_FAR_MESSAGE_MS);
       }
-      return;
+      return true;
+    }
+
+    const remotes = [...this.remotePlayers.values()];
+    const knightHits = this.raycaster.intersectObjects(remotes.map((remote) => remote.root), true);
+    const knight = remotes.find((remote) => knightHits.length > 0 && remote.owns(knightHits[0].object));
+    if (knight) {
+      this.player.attack(knight);
+      this.spawnEffect(knight.position, EFFECT_COLOR.enemy, 1.3);
+      if (!this.player.isInAttackRange(knight)) {
+        this.ui.showMessage('Too far away', TOO_FAR_MESSAGE_MS);
+      }
+      return true;
     }
 
     const chestHits = this.raycaster.intersectObjects(this.chests.map((chest) => chest.mesh), true);
@@ -219,13 +264,14 @@ export class Game {
       } else {
         this.ui.showMessage('Too far away', TOO_FAR_MESSAGE_MS);
       }
-      return;
+      return false;
     }
 
     const groundHits = this.raycaster.intersectObject(this.world.ground, false);
     if (groundHits.length > 0) {
       this.spawnEffect(groundHits[0].point, EFFECT_COLOR.nothing, 0.6);
     }
+    return false;
   }
 
   // Left click: move to a point on the ground.
@@ -421,7 +467,7 @@ export class Game {
       existing.setTarget(state);
       return;
     }
-    const remote = new RemotePlayer(state);
+    const remote = new RemotePlayer(state, (amount) => this.network?.attack(state.connectionId, amount));
     this.remotePlayers.set(state.connectionId, remote);
     this.scene.add(remote.root);
   }
@@ -429,6 +475,7 @@ export class Game {
   private removeRemotePlayer(connectionId: string): void {
     const remote = this.remotePlayers.get(connectionId);
     if (remote) {
+      this.player.forget(remote);
       this.scene.remove(remote.root);
       this.remotePlayers.delete(connectionId);
     }
@@ -436,6 +483,7 @@ export class Game {
 
   private clearRemotePlayers(): void {
     for (const remote of this.remotePlayers.values()) {
+      this.player.forget(remote);
       this.scene.remove(remote.root);
     }
     this.remotePlayers.clear();
@@ -469,11 +517,39 @@ export class Game {
     this.ui.showMessage(`Mission complete! Received ${formatReward(mission.reward)}`);
   }
 
+  // Damage from another knight; the server has already checked the hit.
+  private takePlayerDamage(damage: number, attackerId: string, attackerName: string): void {
+    if (this.player.isDead) {
+      return;
+    }
+    this.player.takeDamage(damage);
+    if (this.player.isDead) {
+      this.killedBy = { id: attackerId, name: attackerName };
+    }
+  }
+
   private handleDeath(): void {
     const hadMission = this.mission !== null;
+    const missionText = hadMission ? ' Mission failed.' : '';
     this.endMission();
     this.player.reset();
-    this.ui.showMessage(hadMission ? 'You died. Mission failed.' : 'You died.');
+
+    if (!this.killedBy) {
+      this.ui.showMessage(`You died.${missionText}`);
+      return;
+    }
+
+    // Killed by another knight: drop part of the gold and spices to them.
+    const loot = {
+      gold: Math.floor(playerData.gold * LOOT_SHARE),
+      spices: Math.floor(playerData.spices * LOOT_SHARE),
+    };
+    playerData.gold -= loot.gold;
+    playerData.spices -= loot.spices;
+    this.ui.refreshInventory();
+    this.network?.reportKilled(this.killedBy.id, loot.gold, loot.spices);
+    this.ui.showMessage(`${this.killedBy.name} defeated you! Lost ${formatReward(loot)}.${missionText}`);
+    this.killedBy = null;
   }
 
   private endMission(): void {

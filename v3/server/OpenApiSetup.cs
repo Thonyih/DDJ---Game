@@ -17,8 +17,10 @@ public static class OpenApiSetup
 
         **Real-time (SignalR):** hub at `/hubs/game`, requires the JWT
         (the JS client sends it with `accessTokenFactory`). Each map A-L is a group.
-        - Client → server: `JoinMap(map, x, z, rotation)`, `UpdatePosition(x, z, rotation)`
-        - Server → client: `PlayersInMap`, `PlayerJoined`, `PlayerMoved`, `PlayerLeft`
+        - Client → server: `JoinMap(map, x, z, rotation)`, `UpdatePosition(x, z, rotation)`,
+          `UpdateStats(health, maxHealth, weaponLevel)`, `Attack(targetId, damage)`, `ReportKilled(killerId, gold, spices)`
+        - Server → client: `PlayersInMap`, `PlayerJoined`, `PlayerMoved`, `PlayerLeft`, `PlayerStats`,
+          `PlayerAttacked`, `TakeDamage`, `PlayerKilled`, `Loot`
         """;
 
     public static void AddGameOpenApi(this IServiceCollection services)
