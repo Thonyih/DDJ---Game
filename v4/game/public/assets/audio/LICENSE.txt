@@ -1,0 +1,9 @@
+Sound credits (all CC0 / public domain unless noted):
+- Kenney (kenney.nl), CC0: RPG Audio (swing_*, bow_shot, chest_creak, coins_*, latch, mission_start,
+  ui_*, npc_armour, cloth_*, equip_*)
+  and Impact Sounds (hit_*, hurt, arrow_hit, enemy_death, bell, step_*).
+- Darsycho, "Monster Snarls", CC0: snarl_* — https://opengameart.org/content/monster-snarls
+- "Cathedral in the Forest ambient loop", CC0: amb_forest — https://opengameart.org/content/cathedral-in-the-forest-ambient-loop
+- Écrivain, "Icy Heights" wind, CC0: amb_wind — https://opengameart.org/content/icy-heights
+- Iwan Gabovitch (qubodup), "Dark Ambience Loop" (CC0 among its licence options): amb_dark — https://opengameart.org/content/dark-ambience-loop
+- JaggedStone, "Loopable Dungeon Ambience", CC0: amb_dungeon — https://opengameart.org/content/loopable-dungeon-ambience

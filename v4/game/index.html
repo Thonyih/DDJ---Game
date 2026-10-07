@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:wght@400;600&display=swap"
+    />
+    <style>
+      :root {
+        --iron: #141117;
+        --iron-light: #241e27;
+        --gold: #c9a45c;
+        --gold-dim: #6e5833;
+        --parchment: #eadfc4;
+        --crimson: #8e1b1b;
+        --blood: #c62828;
+        --azulejo: #1f4e9c;
+        --title-font: 'Cinzel', Georgia, serif;
+        --text-font: 'EB Garamond', Georgia, serif;
+      }
+
+      html, body {
+        margin: 0; padding: 0; height: 100%; overflow: hidden;
+        font-family: var(--text-font); font-size: 17px; color: var(--parchment);
+      }
+      canvas#app { display: block; width: 100vw; height: 100vh; }
+      [hidden] { display: none !important; }
+
+      .frame {
+        border: 2px solid var(--gold-dim);
+        background: linear-gradient(180deg, rgba(36, 30, 39, 0.92), rgba(16, 13, 18, 0.92));
+        box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(201, 164, 92, 0.18), 0 6px 20px rgba(0, 0, 0, 0.6);
+      }
+
+      button {
+        padding: 10px 16px; border: 1px solid var(--gold-dim); border-radius: 3px;
+        background: linear-gradient(180deg, #3b2c24, #1c1411);
+        color: var(--parchment); font-family: var(--title-font); font-size: 16px; font-weight: 700;
+        letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+        box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 220, 160, 0.12);
+        text-shadow: 0 1px 2px #000;
+      }
+      button:hover:not(:disabled) { border-color: var(--gold); color: #fff3d6; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.selected {
+        border-color: var(--gold);
+        background: linear-gradient(180deg, #7a1a1a, #3d0b0b);
+      }
+
+      /* Top left */
+      #top-left { position: absolute; top: 16px; left: 16px; }
+      #top-left > button, #top-row > button { display: block; width: 170px; margin-bottom: 8px; }
+      #top-row { display: flex; align-items: flex-start; gap: 10px; }
+      #resources {
+        padding: 9px 16px; font-family: var(--title-font); font-size: 16px; font-weight: 700;
+        color: #e2c27a; white-space: pre; pointer-events: none;
+      }
+      #mission-tracker {
+        margin-top: 4px; padding: 10px 14px; min-width: 240px; pointer-events: none;
+        border-left: 4px solid var(--blood);
+      }
+      #tracker-objective { font-family: var(--title-font); font-weight: 700; }
+
+      /* Top right: square minimap with the world map button to its left */
+      #minimap {
+        position: absolute; top: 16px; right: 16px; width: 220px; height: 220px;
+        border: 4px solid var(--gold-dim);
+        background: #0d0b0f; pointer-events: none;
+        box-shadow: 0 0 0 2px #000, 0 0 0 6px rgba(201, 164, 92, 0.25), 0 6px 20px rgba(0, 0, 0, 0.6);
+      }
+      #map-button { position: absolute; top: 16px; right: 262px; width: 110px; }
+      #sound-button { position: absolute; top: 16px; right: 382px; width: 140px; white-space: nowrap; }
+      /* Map name and compass stacked under the minimap (long names wrap without overlapping) */
+      #map-side {
+        position: absolute; top: 254px; right: 16px; width: 228px;
+        display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+      }
+      #compass { pointer-events: none; }
+      #map-name {
+        width: 100%; box-sizing: border-box;
+        padding: 6px 8px; text-align: center; pointer-events: none;
+        font-family: var(--title-font); font-size: 14px; font-weight: 700; color: var(--gold);
+      }
+
+      /* Travel prompt at the top of the screen */
+      #travel-prompt {
+        position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+        display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+        font-family: var(--title-font); font-size: 18px; font-weight: 700; white-space: nowrap;
+      }
+
+      /* World map grid */
+      #map-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 16px 0;
+      }
+      .map-cell {
+        min-height: 84px; padding: 6px; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        border: 2px solid var(--gold-dim); background: var(--tier-bg, rgba(0, 0, 0, 0.4));
+        font-family: var(--title-font); color: var(--parchment); text-align: center;
+        text-shadow: 0 1px 3px #000, 0 0 2px #000;
+      }
+      .map-cell-letter { font-size: 24px; font-weight: 700; }
+      .map-cell-name { font-size: 11px; line-height: 1.2; }
+      .map-cell-tier { margin-top: 3px; font-size: 10px; color: #e2c27a; opacity: 0.85; }
+      .map-cell.current {
+        border-color: var(--gold); color: #fff3d6;
+        background: linear-gradient(180deg, #7a1a1a, #3d0b0b);
+        box-shadow: 0 0 12px rgba(201, 164, 92, 0.6);
+      }
+      .map-cell.exit { border-color: var(--gold); }
+
+      /* Bottom */
+      #bottom-bar {
+        position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+        pointer-events: none;
+      }
+      #health-bar {
+        position: relative; height: 26px; margin-bottom: 8px; overflow: hidden;
+        border: 2px solid var(--gold-dim); background: #200707;
+        box-shadow: 0 0 0 1px #000, inset 0 2px 6px rgba(0, 0, 0, 0.8);
+      }
+      #health-fill { height: 100%; background: linear-gradient(180deg, #d63a3a, var(--crimson) 60%, #4a0909); }
+      #health-text {
+        position: absolute; inset: 0; text-align: center; line-height: 26px;
+        font-family: var(--title-font); font-size: 15px; font-weight: 700;
+        color: #fff; text-shadow: 0 1px 3px #000;
+      }
+      #slots { display: flex; gap: 8px; }
+      .slot {
+        position: relative; width: 76px; height: 76px;
+        border: 2px solid var(--gold-dim);
+        background: radial-gradient(circle at 50% 40%, #2b2430, #0e0b10);
+        box-shadow: 0 0 0 1px #000, inset 0 0 12px rgba(0, 0, 0, 0.9);
+        font-family: var(--title-font); font-size: 12px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; text-align: center;
+      }
+      .slot-number { position: absolute; top: 3px; left: 6px; font-size: 12px; color: var(--gold); }
+      .slot-label { white-space: pre-line; line-height: 1.3; }
+      /* Weapon slots can be clicked to select that weapon */
+      .slot.weapon-slot { pointer-events: auto; cursor: pointer; }
+      .slot.weapon-slot:hover { border-color: var(--gold); }
+      .slot.active {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 1px #000, 0 0 14px rgba(201, 164, 92, 0.7), inset 0 0 12px rgba(0, 0, 0, 0.9);
+      }
+
+      /* Messages */
+      #toast {
+        position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+        padding: 12px 70px; white-space: nowrap; pointer-events: none;
+        font-family: var(--title-font); font-size: 22px; font-weight: 700; color: var(--parchment);
+        text-shadow: 0 2px 4px #000;
+        background: linear-gradient(90deg, transparent, rgba(12, 8, 10, 0.92) 20%, rgba(12, 8, 10, 0.92) 80%, transparent);
+        border-top: 1px solid var(--gold-dim); border-bottom: 1px solid var(--gold-dim);
+      }
+
+      /* Inventory and Missions panels */
+      .panel {
+        position: absolute; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 420px; max-height: 80vh; overflow-y: auto; padding: 30px 26px 22px;
+      }
+      /* Azulejo-style tile strip along the top of each panel. */
+      .panel::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 12px;
+        background:
+          radial-gradient(circle, var(--azulejo) 25%, transparent 27%),
+          linear-gradient(45deg, transparent 42%, var(--azulejo) 42% 58%, transparent 58%),
+          linear-gradient(-45deg, transparent 42%, var(--azulejo) 42% 58%, transparent 58%),
+          #e9eef7;
+        background-size: 12px 12px;
+        border-bottom: 2px solid var(--gold-dim);
+      }
+      .panel h2 {
+        margin: 0; font-family: var(--title-font); font-size: 26px; color: var(--gold);
+        letter-spacing: 2px; text-shadow: 0 2px 4px #000;
+      }
+      .panel h3 {
+        margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--gold-dim);
+        font-family: var(--title-font); font-size: 17px; color: var(--gold); letter-spacing: 1px;
+      }
+      .panel-header { display: flex; justify-content: space-between; align-items: center; }
+      .panel-header button { padding: 6px 12px; font-size: 13px; }
+      .panel .full { display: block; width: 100%; margin-top: 8px; }
+      .panel .details {
+        margin: 12px 0; padding: 12px; border: 1px solid rgba(201, 164, 92, 0.25);
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .panel .details strong { font-family: var(--title-font); color: #e2c27a; }
+      #missions-tier { margin: 6px 0 4px; color: var(--gold); font-family: var(--title-font); }
+      /* A travel mission's target map on the World Map */
+      .map-cell.target { border-color: #ffd34d; box-shadow: 0 0 14px rgba(255, 211, 77, 0.7); }
+      .map-cell.target::after { content: '★'; color: #ffd34d; font-size: 16px; }
+
+      /* Tutorial */
+      .tutorial-hidden { display: none !important; }
+      #tutorial-tip {
+        position: absolute; z-index: 20; max-width: 260px; padding: 10px 14px; pointer-events: none;
+        font-size: 16px; line-height: 1.35; border-color: var(--gold);
+        box-shadow: 0 0 0 1px #000, 0 0 16px rgba(201, 164, 92, 0.45), 0 6px 20px rgba(0, 0, 0, 0.6);
+        animation: tip-pulse 1.6s ease-in-out infinite;
+      }
+      #tutorial-tip strong { font-family: var(--title-font); color: #e2c27a; }
+      #tutorial-tip::after {
+        content: ''; position: absolute; width: 0; height: 0; border: 8px solid transparent;
+      }
+      #tutorial-tip[data-side='above'] { transform: translate(-50%, calc(-100% - 14px)); }
+      #tutorial-tip[data-side='above']::after { top: 100%; left: 50%; margin-left: -8px; border-top-color: var(--gold); }
+      #tutorial-tip[data-side='right'] { transform: translate(14px, -50%); }
+      #tutorial-tip[data-side='right']::after { right: 100%; top: 50%; margin-top: -8px; border-right-color: var(--gold); }
+      #tutorial-tip[data-side='below'] { transform: translate(-50%, 14px); }
+      #tutorial-tip[data-side='below']::after { bottom: 100%; left: 50%; margin-left: -8px; border-bottom-color: var(--gold); }
+      @keyframes tip-pulse {
+        50% { box-shadow: 0 0 0 1px #000, 0 0 26px rgba(201, 164, 92, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6); }
+      }
+      #tutorial-skip { position: absolute; right: 16px; bottom: 18px; padding: 6px 12px; font-size: 13px; }
+
+      /* Darkens the screen edges; stronger in the northern rows */
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.9) 100%);
+      }
+      /* Shown while the character models download */
+      #loading {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: #0d0b0f; color: var(--gold); font-family: var(--title-font); font-size: 28px; letter-spacing: 3px;
+      }
+
+      /* Inventory: 3x3 grid and item card */
+      /* Wider panel: grid on the left, item card beside it so it never covers other slots */
+      #inventory { width: 600px; }
+      #inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; width: 330px; }
+      .inv-slot {
+        position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+        border: 2px solid var(--gold-dim); cursor: pointer;
+        background: radial-gradient(circle at 50% 40%, #2b2430, #0e0b10);
+        box-shadow: 0 0 0 1px #000, inset 0 0 12px rgba(0, 0, 0, 0.9);
+      }
+      .inv-slot:hover:not(.empty) { border-color: var(--gold); }
+      .inv-slot.empty { cursor: default; opacity: 0.45; }
+      .inv-slot.selected { outline: 2px solid #fff3d6; }
+      .inv-slot svg { width: 45%; height: 45%; overflow: visible; }
+      .inv-slot .badge, .inv-slot .amount {
+        position: absolute; bottom: 4px; font-family: var(--title-font); font-size: 13px; font-weight: 700;
+        text-shadow: 0 1px 2px #000;
+      }
+      .inv-slot .badge { left: 6px; color: var(--gold); }
+      .inv-slot .amount { right: 6px; color: var(--parchment); }
+      /* Glows while an upgrade can be bought */
+      .inv-slot.can-upgrade { border-color: var(--gold); animation: slot-glow 1.4s ease-in-out infinite; }
+      @keyframes slot-glow {
+        50% { box-shadow: 0 0 0 1px #000, 0 0 18px rgba(255, 200, 90, 0.85), inset 0 0 16px rgba(255, 200, 90, 0.35); }
+      }
+      #item-card { position: absolute; z-index: 2; width: 210px; padding: 12px 14px; background: #17131a; }
+      #item-card h4 { margin: 0 0 4px; font-family: var(--title-font); color: var(--gold); font-size: 17px; }
+      #item-card .card-line { margin: 4px 0; }
+      #item-card .card-cost.short { color: #ff8a80; }
+      #item-card button { width: 100%; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="app"></canvas>
+    <div id="loading">Loading the realm…</div>
+    <div id="vignette"></div>
+
+    <div id="top-left">
+      <div id="top-row">
+        <button id="inventory-button">Inventory</button>
+        <div id="resources" class="frame"></div>
+      </div>
+      <div id="mission-tracker" class="frame" hidden>
+        <div id="tracker-objective"></div>
+        <div id="tracker-target"></div>
+      </div>
+    </div>
+
+    <button id="sound-button">Sound On</button>
+    <button id="map-button">Map A</button>
+    <canvas id="minimap"></canvas>
+    <div id="map-side">
+      <div id="map-name" class="frame"></div>
+      <canvas id="compass"></canvas>
+    </div>
+
+    <div id="travel-prompt" class="frame" hidden>
+      <span id="travel-text"></span>
+      <button id="travel-yes">Travel</button>
+      <button id="travel-no">Stay</button>
+    </div>
+
+    <div id="bottom-bar">
+      <div id="health-bar">
+        <div id="health-fill"></div>
+        <div id="health-text"></div>
+      </div>
+      <div id="slots"></div>
+    </div>
+
+    <div id="toast" hidden></div>
+
+    <div id="tutorial-tip" class="frame" hidden></div>
+    <button id="tutorial-skip" hidden>Skip tutorial</button>
+
+    <div id="inventory" class="panel frame" hidden>
+      <div class="panel-header">
+        <h2>Inventory</h2>
+        <button id="inventory-close">Close</button>
+      </div>
+      <div id="inventory-grid"></div>
+      <div id="item-card" class="frame" hidden></div>
+    </div>
+
+    <div id="world-map" class="panel frame" hidden>
+      <div class="panel-header">
+        <h2>World Map</h2>
+        <button id="world-map-close">Close</button>
+      </div>
+      <div id="map-grid"></div>
+      <div class="details">
+        <strong id="map-current"></strong>
+        <div id="map-exits"></div>
+        <div>North is the top of the minimap. Walk to that border to travel.</div>
+      </div>
+    </div>
+
+    <div id="missions" class="panel frame" hidden>
+      <div class="panel-header">
+        <h2>Missions</h2>
+        <button id="missions-close">Close</button>
+      </div>
+      <div id="missions-tier"></div>
+      <div id="mission-list"></div>
+      <div class="details">
+        <strong id="mission-name"></strong>
+        <div id="mission-objective"></div>
+        <div id="mission-reward"></div>
+      </div>
+      <button id="start-mission" class="full">Start Mission</button>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
