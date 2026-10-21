@@ -1,0 +1,12 @@
+Models by Quaternius (quaternius.com), CC0 1.0 (public domain), downloaded from poly.pizza:
+- Wolf.glb         https://poly.pizza/m/P1gU3Qkr9r
+- Ghost.glb        https://poly.pizza/m/Iip30bDHmu
+- Demon_Small.glb  https://poly.pizza/m/Mo2ky6vkf8
+- Demon_Large.glb  https://poly.pizza/m/LnfIziKv4o
+- Yeti.glb         https://poly.pizza/m/xtMYEVzyw0
+- Skeleton.glb        https://poly.pizza/m/DM4QScSmbS  (CC0 1.0)
+- Pirate_Captain.glb  https://poly.pizza/m/sN18LyyHAU  (CC0 1.0)
+
+Licensed CC-BY 3.0 (credit required):
+- Zombie.glb  "Animated Zombie" by Quaternius (quaternius.com), CC-BY 3.0
+              https://poly.pizza/m/jkrEvQZb8J — https://creativecommons.org/licenses/by/3.0/
